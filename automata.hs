@@ -3,7 +3,6 @@ import Control.Monad.Writer
 --- Tipos ---
 
 type State = String
-data WriterList a b = WriterList {runWriterList :: WriterT b [] a}
 
 data DFA = DFA
     { initial :: State
@@ -52,13 +51,13 @@ nfa = NFA i f t'
 --- Funciones con log ---
 
 logDFA t s c = writer (t s c, [s])
-executeDFA (DFA i f t) = execWriter . foldM (logDFA t) i
+executeDFA (DFA i _ t) = execWriter . foldM (logDFA t) i
 
 
 logNFA t s c = WriterT $ map (\x -> (x,[s])) (t s c)
-executeNFA (NFA i f t) = execWriterT . foldM (logNFA t) i
+executeNFA (NFA i _ t) = execWriterT . foldM (logNFA t) i
 
 
 --- Main e IO ---
 
-main = sequence_ [putStrLn $ show $ executeDFA dfa ['A','A','D'], putStrLn $ show $ executeNFA nfa ['A','A'] ]
+main = mapM_ putStrLn [ show $ executeDFA dfa "AAD", show $ executeNFA nfa "AA" ]
