@@ -48,6 +48,16 @@ t' _   _   = []
 
 nfa = NFA i f t'
 
+
+--- Funciones sin log ---
+
+execTrans :: DFA -> [Char] -> State
+execTrans dfa = foldl (transition dfa) (initial dfa)
+
+isAccepted :: DFA -> [Char] -> Bool
+isAccepted dfa = (isFinal dfa) . (execTrans dfa) 
+
+ 
 --- Funciones con log ---
 
 logDFA t s c = writer (t s c, [s])
