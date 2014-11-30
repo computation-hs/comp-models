@@ -51,11 +51,11 @@ nfa = NFA i f t'
 
 --- Funciones sin log ---
 
-execTrans :: DFA -> [Char] -> State
-execTrans dfa = foldl (transition dfa) (initial dfa)
+process :: DFA -> [Char] -> State
+process dfa = foldl (transition dfa) (initial dfa)
 
-isAccepted :: DFA -> [Char] -> Bool
-isAccepted dfa = (isFinal dfa) . (execTrans dfa) 
+accept :: DFA -> [Char] -> Bool
+accept dfa = (isFinal dfa) . (execTrans dfa) 
 
  
 --- Funciones con log ---
