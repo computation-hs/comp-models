@@ -1,9 +1,13 @@
--- Propuesta de tipos para la gramática libre de contexto
+-- Input aphabet and variable types
+type Alpha = Char
+type Vars  = Char
 
--- Una expresión en una gramática libre de contexto
--- es una lista de variables y símbolos del alfabeto. 
-type FExpr v a = [Either a v]
 
--- Una gramática libre de contexto la forman un conjunto
--- de producciones de variables a expresiones.
-type FGrammar v a = [(v,Fexpr a v)]
+-- A free context grammar expression is a list of
+-- variables and input alphabet symbols.
+-- Epsilon is the empty list.
+type FExpr = [Either Alpha Vars]
+
+-- A free context grammar is a ser of productions
+-- from variables to expressions.
+type FGrammar = [(Vars,Fexpr)]
