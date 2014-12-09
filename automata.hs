@@ -1,6 +1,6 @@
 import Control.Monad.Writer
 
---- Tipos ---
+--- Basic types for automata ---
 
 type State = String
 
@@ -17,7 +17,7 @@ data NFA = NFA
     }
 
 
---- DFA de ejemplo ---
+--- Example DFA ---
 
 t :: State -> Char -> State
 t "1" 'A' = "2"
@@ -35,7 +35,7 @@ f = (`elem` ["4","5"])
 
 dfa = DFA i f t
 
---- NFA de ejemplo ---
+--- Example NFA ---
 
 t' :: State -> Char -> [State]
 t' "1" 'A' = ["2","4"]
@@ -49,7 +49,7 @@ t' _   _   = []
 nfa = NFA i f t'
 
 
---- Funciones sin log ---
+--- Automata execution functions ---
 
 process :: DFA -> [Char] -> State
 process dfa = foldl (transition dfa) (initial dfa)
@@ -58,7 +58,7 @@ accept :: DFA -> [Char] -> Bool
 accept dfa = (isFinal dfa) . (execTrans dfa) 
 
  
---- Funciones con log ---
+--- Automata log functions ---
 
 logDFA t s c = writer (t s c, [s])
 executeDFA (DFA i _ t) = execWriter . foldM (logDFA t) i
@@ -68,6 +68,7 @@ logNFA t s c = WriterT $ map (\x -> (x,[s])) (t s c)
 executeNFA (NFA i _ t) = execWriterT . foldM (logNFA t) i
 
 
---- Main e IO ---
+
+--- Main ---
 
 main = mapM_ putStrLn [ show $ executeDFA dfa "AAD", show $ executeNFA nfa "AA" ]
