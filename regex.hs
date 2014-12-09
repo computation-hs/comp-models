@@ -1,9 +1,10 @@
 module Regex where
 
--- Tipo para el alfabeto de entrada
+-- Input Alphabet type
 type Alpha = Char
 
--- Expresión regular
+
+-- Regular Expression type
 data Regex = Literal Alpha
            | Epsilon
            | Altern Regex Regex
@@ -18,7 +19,7 @@ instance Show Regex where
   show (Kleene x  ) = "(" ++ show x ++ ")*"
   
 
--- Cadenas que cumplen una expresión regular
+-- Matching a regular expression
 match :: Regex -> [Alpha] -> Bool
 match (Literal x)  s = (s == [x])
 match (Epsilon)    s = (s == [])
