@@ -2,24 +2,25 @@ import Control.Monad.Writer
 
 --- Basic types for automata ---
 
-type State = String
+type State = String -- ^ Type synonym for automata states.
+type Alpha = Char   -- ^ Type synonym for automata symbols.
 
 data DFA = DFA
     { initial :: State
     , isFinal :: State -> Bool
-    , transition :: State -> Char -> State
+    , transition :: State -> Alpha -> State
     }
 
 data NFA = NFA
     { ini :: State
     , fin :: State -> Bool
-    , tra :: State -> Char -> [State]
+    , tra :: State -> Alpha -> [State]
     }
 
 
 --- Example DFA ---
 
-t :: State -> Char -> State
+t :: State -> Alpha -> State
 t "1" 'A' = "2"
 t "2" 'A' = "3"
 t "2" 'B' = "1"
@@ -37,7 +38,7 @@ dfa = DFA i f t
 
 --- Example NFA ---
 
-t' :: State -> Char -> [State]
+t' :: State -> Alpha -> [State]
 t' "1" 'A' = ["2","4"]
 t' "2" 'A' = ["3"]
 t' "2" 'B' = ["1"]
@@ -51,21 +52,28 @@ nfa = NFA i f t'
 
 --- Automata execution functions ---
 
-process :: DFA -> [Char] -> State
+process :: DFA -> [Alpha] -> State
+-- ^ Returns the final state of a DFA given a word.
 process (DFA i f t) = foldl t i
 
-accept :: DFA -> [Char] -> Bool
+accept :: DFA -> [Alpha] -> Bool
+-- ^ Checks if a certain word is accepted by a given DFA.
 accept dfa@(DFA _ f _) = f . (process dfa) 
 
- 
+
 --- Automata log functions ---
 
 logDFA t s c = writer (t s c, [s])
-executeDFA (DFA i _ t) = execWriter . foldM (logDFA t) i
-
-
 logNFA t s c = WriterT $ map (\x -> (x,[s])) (t s c)
-executeNFA (NFA i _ t) = execWriterT . foldM (logNFA t) i
+addFinal (a,xs) = xs ++ [a]
+
+executeDFA :: DFA -> [Alpha] -> [State]
+-- ^ Returns the execution log of DFA given a word.
+executeDFA (DFA i _ t) = addFinal . runWriter . foldM (logDFA t) i
+
+executeNFA :: NFA -> [Alpha] -> [[State]]
+-- ^ Returns the executions logs of all paths in a NFA given a word.
+executeNFA (NFA i _ t) = map addFinal . runWriterT . foldM (logNFA t) i
 
 
 
