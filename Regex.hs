@@ -25,5 +25,6 @@ match (Literal x)  s = (s == [x])
 match (Epsilon)    s = (s == [])
 match (Altern x y) s = (match x s)&&(match y s)
 match (Concat x y) s = or [(match x sa)&&(match y sb) | (sa,sb) <- partitions]
+  where partitions = [splitAt n s | n <- [0..length s]]
 match (Kleene x)   s = (match Epsilon s) || or [(match x sa)&&(match (Kleene x) sb) | (sa,sb) <- partitions]
   where partitions = [splitAt n s | n <- [0..length s]]
