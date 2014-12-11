@@ -52,10 +52,10 @@ nfa = NFA i f t'
 --- Automata execution functions ---
 
 process :: DFA -> [Char] -> State
-process dfa = foldl (transition dfa) (initial dfa)
+process (DFA i f t) = foldl t i
 
 accept :: DFA -> [Char] -> Bool
-accept dfa = (isFinal dfa) . (execTrans dfa) 
+accept dfa@(DFA _ f _) = f . (process dfa) 
 
  
 --- Automata log functions ---
