@@ -11,8 +11,9 @@ import Control.Applicative ((<$>))
 regexp :: Parser Regex
 regexp = buildExpressionParser optable term
 
-optable = [ [Infix concatp AssocLeft ]
-          , [Infix alternp AssocLeft ]
+optable = [ [ Postfix starp ]
+          , [ Infix concatp AssocLeft ]
+          , [ Infix alternp AssocLeft ]
           ]
 
 term :: Parser Regex
@@ -26,6 +27,9 @@ alternp = char '+' >> return (Altern)
 
 concatp :: Parser (Regex -> Regex -> Regex)
 concatp = char '.' >> return (Concat)
+
+starp :: Parser (Regex -> Regex)
+starp = char '*' >> return (Kleene)
 
 parens :: Parser a -> Parser a
 parens = between (char '(') (char ')')
