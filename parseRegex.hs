@@ -17,10 +17,15 @@ optable = [ [ Postfix starp ]
           ]
 
 term :: Parser Regex
-term = literalp <|> parens regexp
+term =  literalp
+       <|> epsilonp
+       <|> parens regexp
 
 literalp :: Parser Regex
 literalp = Literal <$> lower
+
+epsilonp :: Parser Regex
+epsilonp = char '%' >> return (Epsilon)
 
 alternp :: Parser (Regex -> Regex -> Regex)
 alternp = char '+' >> return (Altern)
