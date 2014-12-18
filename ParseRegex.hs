@@ -45,5 +45,14 @@ parens = between (char '(') (char ')')
 -}
 main = do
   input <- getLine
-  let iregx = parse regexp "" input  
+  let iregx = parse regexp "" input
+  let r = case iregx of
+        Right x -> x
+        Left  r -> Epsilon
   putStrLn ("Regular Expression: " ++ show iregx)
+  putStrLn ("Insert expressions:")
+  interact (unlines . map (\xs -> 
+                            if match r xs
+                            then "match"
+                            else "does not match")
+            . lines)
