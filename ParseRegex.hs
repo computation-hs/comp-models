@@ -49,7 +49,7 @@ main = do
   let r = case iregx of
         Right x -> x
         Left  r -> Epsilon
-  putStrLn ("Regular Expression: " ++ show iregx)
+  putStrLn ("Regular Expression: " ++ show r)
   putStrLn ("Insert expressions:")
   interact (unlines . map (\xs -> 
                             if match r xs
