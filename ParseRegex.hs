@@ -31,7 +31,7 @@ alternp :: Parser (Regex -> Regex -> Regex)
 alternp = char '+' >> return (Altern)
 
 concatp :: Parser (Regex -> Regex -> Regex)
-concatp = char '.' >> return (Concat)
+concatp = return (Concat)
 
 starp :: Parser (Regex -> Regex)
 starp = char '*' >> return (Kleene)
