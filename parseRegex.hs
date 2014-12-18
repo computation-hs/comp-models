@@ -38,3 +38,12 @@ starp = char '*' >> return (Kleene)
 
 parens :: Parser a -> Parser a
 parens = between (char '(') (char ')')
+
+
+{-
+ Test Main
+-}
+main = do
+  input <- getLine
+  let iregx = parse regexp "" input  
+  putStrLn ("Regular Expression: " ++ show iregx)
