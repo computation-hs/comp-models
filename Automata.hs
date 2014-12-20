@@ -6,13 +6,14 @@ import Data.Maybe
 
 -- | 'State' is a type synonym of String for automata states.
 type State = String
+
 -- | 'Alpha' is a type synonym of String for automata symbols.
 type Alpha = Char
 
--- | 'DFA' is the type for deterministic finite automata. It has one
---   constructor which takes the initial state, a predicate which
---   defines final states and the transition function. The transition
---   function operates always inside the Maybe Monad for error handling.
+-- | 'DFA' is the type for deterministic finite automata. Its constructor
+--   takes the initial state, a predicate which defines final states and the
+--   transition function. The transition function operates always inside the
+--   Maybe Monad for error handling.
 data DFA = DFA State (State -> Bool) (State -> Alpha -> Maybe State)
 
 -- | 'NFA' is the type for non-deterministic finite automata. It has one
@@ -41,6 +42,7 @@ f = (`elem` ["4","5"])
 
 dfa = DFA i f t
 
+
 {- Example NFA -}
 
 t' :: State -> Alpha -> [State]
@@ -63,17 +65,16 @@ nfa = NFA i f t'
 process :: DFA -> [Alpha] -> Maybe State
 process (DFA i f t) = foldM t i
 
--- | 'accept' checks if a certain word is accepted by a given 'DFA'.
---   It uses the 'process' function for execution and the 'DFA' predicate
---   for checking whether is final.
+-- | 'accept' checks if a word is accepted by a 'DFA'. It uses the 'process'
+--   function for execution and the 'DFA' predicate for checking.
 accept :: DFA -> [Alpha] -> Bool
 accept dfa@(DFA _ f _) = maybe False f . process dfa
 
+
 {- Automata log functions -}
 
--- | 'addLog' creates the pair necessary for the WriterT monad. It creates
---   a list in which the old states are added. It is used in all logging
---   functions for automata.
+-- | 'addLog' creates a list in which the old states are added. It is used in
+--   all logging functions for automata.
 addLog :: State -> State -> (State, [State])
 addLog old new = (new, [old])
 
@@ -82,29 +83,24 @@ addLog old new = (new, [old])
 addFinal :: (State, [State]) -> [State]
 addFinal (s,ss) = ss ++ [s]
 
--- | 'logDFA' takes a DFA transition function and returns this function
---   inside the WriterT monad transformer. This makes possible keeping a
---   log of the states the automaton has been in.
+-- | 'logDFA' takes a DFA transition function and returns it inside the
+--   WriterT monad transformer. This allows keeping a log of the states.
 logDFA :: (State -> Alpha -> Maybe State) -> (State -> Alpha -> WriterT [State] Maybe State)
-logDFA t old = WriterT . maybe Nothing (Just . addLog old) . t old
+logDFA t old symbol = WriterT $ t old symbol >>= Just . addLog old
 
--- | 'logNFA' takes a NFA transition function and returns this function
---   inside the WriterT monad transformer. This makes possible keeping a
---   log of the states the automaton has been in, keeping a separate log
+-- | 'logNFA' takes a NFA transition function and returns it inside the
+--   WriterT monad transformer. This allows keeping a log of the states
 --   for each path.
 logNFA :: (State -> Alpha -> [State]) -> (State -> Alpha -> WriterT [State] [] State)
 logNFA t old symbol = WriterT $ map (addLog old) (t old symbol)
 
 -- | 'executeDFA' Returns the execution log of a DFA given a word.
---   It uses the 'logDFA' auxiliary function and operates inside a
---   combined monad using both WriterT and Maybe types.
+--   It  operates inside a monad using both WriterT and Maybe types.
 executeDFA :: DFA -> [Alpha] -> Maybe [State]
-executeDFA (DFA i _ t) = (maybe Nothing (Just . addFinal)) . runWriterT . foldM (logDFA t) i
+executeDFA (DFA i _ t) ss = (runWriterT $ foldM (logDFA t) i ss) >>= Just . addFinal
 
 -- | 'executeNFA' Returns the executions logs of all paths in a NFA
---   given a word. It uses the 'logNFA' auxiliary function and
---   operates inside a combined monad using both WriterT and Maybe
---   types.
+--   given a word. It operates inside a monad using both WriterT and Maybe types.
 executeNFA :: NFA -> [Alpha] -> [[State]]
 executeNFA (NFA i _ t) = map addFinal . runWriterT . foldM (logNFA t) i
 
