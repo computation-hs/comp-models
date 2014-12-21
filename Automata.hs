@@ -17,10 +17,10 @@ type Alpha = Char
 data DFA = DFA State (State -> Bool) (State -> Alpha -> Maybe State)
 
 -- | 'NFA' is the type for non-deterministic finite automata. It has one
---   constructor which takes the initial state, a predicate which
+--   constructor which takes the set of initial states, a predicate which
 --   defines final states and the transition function. The transition
 --   function operates always inside the List Monad for non-determinism.
-data NFA = NFA State (State -> Bool) (State -> Alpha -> [State])
+data NFA = NFA [State] (State -> Bool) (State -> Alpha -> [State])
 
 
 {- Example DFA -}
@@ -54,7 +54,10 @@ t' "3" 'D' = ["5"]
 t' "4" 'A' = ["2"]
 t' _   _   = []
 
-nfa = NFA i f t'
+i' :: [State]
+i' = ["1", "2"]
+
+nfa = NFA i' f t'
 
 
 {- Automata execution functions -}
@@ -88,9 +91,8 @@ addFinal (s,ss) = ss ++ [s]
 logDFA :: (State -> Alpha -> Maybe State) -> (State -> Alpha -> WriterT [State] Maybe State)
 logDFA t old symbol = WriterT $ t old symbol >>= Just . addLog old
 
--- | 'logNFA' takes a NFA transition function and returns it inside the
---   WriterT monad transformer. This allows keeping a log of the states
---   for each path.
+-- | 'logNFA' takes a NFA transition function and returns it inside WriterT
+--   monad transformer. This allows keeping a log of states for each path.
 logNFA :: (State -> Alpha -> [State]) -> (State -> Alpha -> WriterT [State] [] State)
 logNFA t old symbol = WriterT $ map (addLog old) (t old symbol)
 
@@ -100,9 +102,10 @@ executeDFA :: DFA -> [Alpha] -> Maybe [State]
 executeDFA (DFA i _ t) ss = (runWriterT $ foldM (logDFA t) i ss) >>= Just . addFinal
 
 -- | 'executeNFA' Returns the executions logs of all paths in a NFA
---   given a word. It operates inside a monad using both WriterT and Maybe types.
+--   given a word. It operates inside a monad using both WriterT and List types.
 executeNFA :: NFA -> [Alpha] -> [[State]]
-executeNFA (NFA i _ t) = map addFinal . runWriterT . foldM (logNFA t) i
+executeNFA (NFA i _ t) ss = let i' = WriterT $ map (\x -> (x,[])) i  in
+    map addFinal $ runWriterT $ i' >>= (\x -> foldM (logNFA t) i' ss)
 
 
 {- Main -}
