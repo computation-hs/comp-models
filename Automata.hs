@@ -12,14 +12,14 @@ type Alpha = Char
 
 -- | 'DFA' is the type for deterministic finite automata. Its constructor
 --   takes the initial state, a predicate which defines final states and the
---   transition function. The transition function operates always inside the
---   Maybe Monad for error handling.
+--   transition function. The transition function operates inside the Maybe
+--   monad for error handling.
 data DFA = DFA State (State -> Bool) (State -> Alpha -> Maybe State)
 
 -- | 'NFA' is the type for non-deterministic finite automata. It has one
 --   constructor which takes the set of initial states, a predicate which
 --   defines final states and the transition function. The transition
---   function operates always inside the List Monad for non-determinism.
+--   function operates inside the List Monad for non-determinism.
 data NFA = NFA [State] (State -> Bool) (State -> Alpha -> [State])
 
 
@@ -62,16 +62,26 @@ nfa = NFA i' f t'
 
 {- Automata execution functions -}
 
--- | 'process' returns the final state of a 'DFA' given a word. Operates
---   inside the Maybe Monad. Returns the end state in case the execution
+-- | 'processDFA' returns the final state of a 'DFA' given a word. Operates
+--   inside the Maybe Monad. Returns the end state in case execution
 --   was correct and Nothing otherwise.
-process :: DFA -> [Alpha] -> Maybe State
-process (DFA i f t) = foldM t i
+processDFA :: DFA -> [Alpha] -> Maybe State
+processDFA (DFA i _ t) = foldM t i
 
--- | 'accept' checks if a word is accepted by a 'DFA'. It uses the 'process'
+-- | 'acceptDFA' checks if a word is accepted by a 'DFA'. It uses 'processDFA'
 --   function for execution and the 'DFA' predicate for checking.
-accept :: DFA -> [Alpha] -> Bool
-accept dfa@(DFA _ f _) = maybe False f . process dfa
+acceptDFA :: DFA -> [Alpha] -> Bool
+acceptDFA dfa@(DFA _ f _) = maybe False f . processDFA dfa
+
+-- | 'processNFA' returns the final state of a 'NFA' given a word. Operates
+--   inside the LIst Monad. Returns the list of end states.
+processNFA :: NFA -> [Alpha] -> [State]
+processNFA (NFA i _ t) ss = i >>= (\x -> foldM t x ss)
+
+-- | 'acceptNFA' checks if a word is accepted by a 'NFA'. It uses 'processNFA'
+--   function for execution and the 'NFA' predicate for checking.
+acceptNFA :: NFA -> [Alpha] -> Bool
+acceptNFA nfa@(NFA _ f _) = any f . processNFA nfa
 
 
 {- Automata log functions -}
@@ -86,26 +96,29 @@ addLog old new = (new, [old])
 addFinal :: (State, [State]) -> [State]
 addFinal (s,ss) = ss ++ [s]
 
+
 -- | 'logDFA' takes a DFA transition function and returns it inside the
 --   WriterT monad transformer. This allows keeping a log of the states.
 logDFA :: (State -> Alpha -> Maybe State) -> (State -> Alpha -> WriterT [State] Maybe State)
 logDFA t old symbol = WriterT $ t old symbol >>= Just . addLog old
+
+-- | 'executeDFA' Returns the execution log of a DFA given a word.
+--   It operates inside a monad using both WriterT and Maybe types.
+executeDFA :: DFA -> [Alpha] -> Maybe [State]
+executeDFA (DFA i _ t) ss = (runWriterT $ foldM (logDFA t) i ss) >>= Just . addFinal
+
 
 -- | 'logNFA' takes a NFA transition function and returns it inside WriterT
 --   monad transformer. This allows keeping a log of states for each path.
 logNFA :: (State -> Alpha -> [State]) -> (State -> Alpha -> WriterT [State] [] State)
 logNFA t old symbol = WriterT $ map (addLog old) (t old symbol)
 
--- | 'executeDFA' Returns the execution log of a DFA given a word.
---   It  operates inside a monad using both WriterT and Maybe types.
-executeDFA :: DFA -> [Alpha] -> Maybe [State]
-executeDFA (DFA i _ t) ss = (runWriterT $ foldM (logDFA t) i ss) >>= Just . addFinal
-
 -- | 'executeNFA' Returns the executions logs of all paths in a NFA
 --   given a word. It operates inside a monad using both WriterT and List types.
 executeNFA :: NFA -> [Alpha] -> [[State]]
-executeNFA (NFA i _ t) ss = let i' = WriterT $ map (\x -> (x,[])) i  in
-    map addFinal $ runWriterT $ i' >>= (\x -> foldM (logNFA t) i' ss)
+executeNFA (NFA i _ t) ss =
+  let i' = WriterT $ map (\x -> (x,[])) i  in
+    map addFinal $ runWriterT $ i' >>= (\x -> foldM (logNFA t) x ss)
 
 
 {- Main -}
