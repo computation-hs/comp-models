@@ -1,6 +1,22 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 import Control.Monad.Writer
 import Data.Maybe
 
+{- Automata class -}
+class (Monad m) => Automata a m where
+  accept  :: a -> [Alpha] -> Bool
+  process :: a -> [Alpha] -> m State
+  execute :: a -> [Alpha] -> m [State]
+
+instance Automata DFA Maybe where
+  accept  = acceptDFA
+  process = processDFA
+  execute = executeDFA
+
+instance Automata NFA [] where
+  accept  = acceptNFA
+  process = processNFA
+  execute = executeNFA
 
 {- Basic types for automata -}
 
