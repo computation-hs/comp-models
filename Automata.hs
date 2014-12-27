@@ -1,22 +1,34 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 import Control.Monad.Writer
 import Data.Maybe
 
 {- Automata class -}
-class (Monad m) => Automata a m where
-  accept  :: a -> [Alpha] -> Bool
+class (Monad m) => Automata a m | a -> m, m -> a where
+  -- | 'process' returns the final state of an automaton given a word.
+  --   Returns default value if execution wasn't correct.
   process :: a -> [Alpha] -> m State
+  -- | 'accept' checks if a word is accepted by an automaton.
+  accept  :: a -> [Alpha] -> Bool
+  -- | 'execute' Returns the execution(s) log(s) of all paths in an automaton
+  --   given a word.
   execute :: a -> [Alpha] -> m [State]
+  -- | 'log' takes a transition function and returns it inside the
+  --   WriterT transformer. This allows keeping a log of the states.
+  logt    :: (State -> Alpha -> m State) -> (State -> Alpha -> WriterT [State] m State)
 
 instance Automata DFA Maybe where
-  accept  = acceptDFA
-  process = processDFA
-  execute = executeDFA
+  process     (DFA i _ t)     = foldM t i
+  accept  dfa@(DFA _ f _)     = maybe False f . process dfa
+  logt    t old symbol        = WriterT $ t old symbol >>= Just . addLog old
+  execute     (DFA i _ t) ss  = (runWriterT $ foldM (logt t) i ss) >>= Just . addFinal
 
 instance Automata NFA [] where
-  accept  = acceptNFA
-  process = processNFA
-  execute = executeNFA
+  process     (NFA i _ t) ss  = i >>= (\x -> foldM t x ss)
+  accept  nfa@(NFA _ f _)     = any f . process nfa
+  logt    t old symbol        = WriterT $ map (addLog old) (t old symbol)
+  execute     (NFA i _ t) ss  = let i' = WriterT $ map (\x -> (x,[])) i  in
+    map addFinal $ runWriterT $ i' >>= (\x -> foldM (logt t) x ss)
+
 
 {- Basic types for automata -}
 
@@ -76,67 +88,17 @@ i' = ["1", "2"]
 nfa = NFA i' f t'
 
 
-{- Automata execution functions -}
+{- Auxiliary functions -}
 
--- | 'processDFA' returns the final state of a 'DFA' given a word. Operates
---   inside the Maybe Monad. Returns the end state in case execution
---   was correct and Nothing otherwise.
-processDFA :: DFA -> [Alpha] -> Maybe State
-processDFA (DFA i _ t) = foldM t i
-
--- | 'acceptDFA' checks if a word is accepted by a 'DFA'. It uses 'processDFA'
---   function for execution and the 'DFA' predicate for checking.
-acceptDFA :: DFA -> [Alpha] -> Bool
-acceptDFA dfa@(DFA _ f _) = maybe False f . processDFA dfa
-
--- | 'processNFA' returns the final state of a 'NFA' given a word. Operates
---   inside the LIst Monad. Returns the list of end states.
-processNFA :: NFA -> [Alpha] -> [State]
-processNFA (NFA i _ t) ss = i >>= (\x -> foldM t x ss)
-
--- | 'acceptNFA' checks if a word is accepted by a 'NFA'. It uses 'processNFA'
---   function for execution and the 'NFA' predicate for checking.
-acceptNFA :: NFA -> [Alpha] -> Bool
-acceptNFA nfa@(NFA _ f _) = any f . processNFA nfa
-
-
-{- Automata log functions -}
-
--- | 'addLog' creates a list in which the old states are added. It is used in
---   all logging functions for automata.
+-- | 'addLog' creates a list of old states. Used in logging functions.
 addLog :: State -> State -> (State, [State])
 addLog old new = (new, [old])
 
--- | 'addFinal' adds the final state to a list. This is useful when extracting
---   data from the WriterT monad in an automaton execution.
+-- | 'addFinal' adds final state to a list. Useful when extracting
+--   data from WriterT in an execution.
 addFinal :: (State, [State]) -> [State]
 addFinal (s,ss) = ss ++ [s]
 
-
--- | 'logDFA' takes a DFA transition function and returns it inside the
---   WriterT monad transformer. This allows keeping a log of the states.
-logDFA :: (State -> Alpha -> Maybe State) -> (State -> Alpha -> WriterT [State] Maybe State)
-logDFA t old symbol = WriterT $ t old symbol >>= Just . addLog old
-
--- | 'executeDFA' Returns the execution log of a DFA given a word.
---   It operates inside a monad using both WriterT and Maybe types.
-executeDFA :: DFA -> [Alpha] -> Maybe [State]
-executeDFA (DFA i _ t) ss = (runWriterT $ foldM (logDFA t) i ss) >>= Just . addFinal
-
-
--- | 'logNFA' takes a NFA transition function and returns it inside WriterT
---   monad transformer. This allows keeping a log of states for each path.
-logNFA :: (State -> Alpha -> [State]) -> (State -> Alpha -> WriterT [State] [] State)
-logNFA t old symbol = WriterT $ map (addLog old) (t old symbol)
-
--- | 'executeNFA' Returns the executions logs of all paths in a NFA
---   given a word. It operates inside a monad using both WriterT and List types.
-executeNFA :: NFA -> [Alpha] -> [[State]]
-executeNFA (NFA i _ t) ss =
-  let i' = WriterT $ map (\x -> (x,[])) i  in
-    map addFinal $ runWriterT $ i' >>= (\x -> foldM (logNFA t) x ss)
-
-
 {- Main -}
 
-main = mapM_ putStrLn [ show $ executeDFA dfa "AAD", show $ executeNFA nfa "AA" ]
+main = (print $ execute dfa "AAD") >> (print $ execute nfa "AA")
