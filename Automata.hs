@@ -12,22 +12,26 @@ class (Monad m) => Automata a m | a -> m, m -> a where
   delta   :: a -> (State -> Alpha -> m State)
   -- | 'accept' checks if a word is accepted.
   accept  :: a -> [Alpha] -> Bool
+  -- | 'alpha' returns the alphabet
+  alpha   :: a -> [Alpha]
   -- | 'toNFA' converts an automaton to a NFA.
   toNFA   :: a -> NFA
 
 instance Automata DFA Maybe where
-  initial (DFA i _ _) = i
-  isFinal (DFA _ f _) = f
-  delta   (DFA _ _ t) = t
-  accept  dfa         = maybe False (isFinal nfa) . process dfa
-  toNFA   (DFA i f t) = NFA (maybeToList i) f (\s c -> maybeToList $ t s c)
+  initial             = initialDFA
+  isFinal             = isFinalDFA
+  delta               = deltaDFA
+  alpha               = alphaDFA
+  accept dfa          = maybe False (isFinal dfa) . process dfa
+  toNFA (DFA i f t a) = NFA (maybeToList i) f (\s c -> maybeToList $ t s c) a
 
 instance Automata NFA [] where
-  initial (NFA i _ _)  = i
-  isFinal (NFA _ f _)  = f
-  delta   (NFA _ _ t)  = t
-  accept  nfa          = any (isFinal nfa) . process nfa
-  toNFA                = id
+  initial     = initialNFA
+  isFinal     = isFinalNFA
+  delta       = deltaNFA
+  alpha       = alphaNFA
+  accept  nfa = any (isFinal nfa) . process nfa
+  toNFA       = id
 
 
 {- Basic types for automata -}
@@ -42,20 +46,30 @@ type Alpha = Char
 --   takes the initial state, a predicate which defines final states and the
 --   transition function. The transition function operates inside the Maybe
 --   monad for error handling.
-data DFA = DFA (Maybe State) (State -> Bool) (State -> Alpha -> Maybe State)
+data DFA = DFA {
+    initialDFA :: Maybe State,
+    isFinalDFA :: State -> Bool,
+    deltaDFA   :: State -> Alpha -> Maybe State,
+    alphaDFA   :: [Alpha]
+    }
 
 -- | 'NFA' is the type for non-deterministic finite automata. It has one
 --   constructor which takes the set of initial states, a predicate which
 --   defines final states and the transition function. The transition
 --   function operates inside the List Monad for non-determinism.
-data NFA = NFA [State] (State -> Bool) (State -> Alpha -> [State])
+data NFA = NFA {
+     initialNFA :: [State],
+     isFinalNFA ::State -> Bool,
+     deltaNFA   ::State -> Alpha -> [State],
+     alphaNFA   :: [Alpha]
+     }
 
 
 {- Auxiliary functions -}
 
 -- | 'addLog' creates a list of old states. Useful in logging functions.
-addLog :: State -> State -> (State, [State])
-addLog old new = (new, [old])
+addLog :: [State] -> State -> (State, [State])
+addLog old new = (new, old)
 
 -- | 'addFinal' adds final state to the list.
 addFinal :: (State, [State]) -> [State]
@@ -67,7 +81,7 @@ foldI f i xs = i >>= \x -> foldM f x xs
 
 -- | 'initialW' returns initial state(s) inside minimum WriterT context.
 initialW :: Automata a m => a -> WriterT [State] m State
-initialW fa = WriterT $ liftM (\x -> (x,[])) (initial fa)
+initialW fa = WriterT $ liftM (addLog []) (initial fa)
 
 
 {- Logging and processing functions -}
@@ -80,7 +94,7 @@ process fa = foldI (delta fa) (initial fa)
 -- | 'logt' takes an automaton and returns its  delta function inside the
 --   WriterT transformer. This allows keeping a log of states.
 logt :: (Automata a m) => a -> (State -> Alpha -> WriterT [State] m State)
-logt fa old symbol = WriterT $ liftM (addLog old) (delta fa old symbol)
+logt fa old symbol = WriterT $ liftM (addLog [old]) (delta fa old symbol)
 
 -- | 'execute' returns the execution(s) log(s) given a word.
 execute :: (Automata a m) => a -> [Alpha] -> m [State]
@@ -97,9 +111,10 @@ t "3" 'D' = Just "5"
 t "4" 'A' = Just "2"
 t  _   _  = Nothing
 
+a = ['A','B','C','D']
 i = Just "1"
 f = (`elem` ["4","5"])
-dfa = DFA i f t
+dfa = DFA i f t a
 
 t' "1" 'A' = ["2","4"]
 t' "2" 'A' = ["3"]
@@ -110,6 +125,6 @@ t' "4" 'A' = ["2"]
 t' _   _   = []
 
 i' = ["1", "2"]
-nfa = NFA i' f t'
+nfa = NFA i' f t' a
 
 main = (print $ execute dfa "AAD") >> (print $ execute nfa "AA")
