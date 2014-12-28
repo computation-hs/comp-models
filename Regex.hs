@@ -1,5 +1,8 @@
 module Regex where
 
+import ToString
+
+
 -- | 'Regex' is the type for regular expressions.
 --    A Regex can be constructed as a literal alphabet symbol, the epsilon 
 --    symbol, the sum or the concatenation of two expressions, or the
@@ -10,12 +13,13 @@ data Regex a = Literal a
              | Concat (Regex a) (Regex a)
              | Kleene (Regex a)
 
-instance (Show a) => Show (Regex a) where
-  show (Literal x ) = show x
+-- | 'Regex a' is an instance of Show if 'a' is.
+instance (ToString a) => Show (Regex a) where
+  show (Literal x ) = toString x
   show (Epsilon   ) = "ε"
-  show (Altern x y) = "(" ++ show x ++ "|" ++ show y ++ ")"
-  show (Concat x y) = show x ++ show y
-  show (Kleene x  ) = "(" ++ show x ++ ")*"
+  show (Altern x y) = "(" ++ toString x ++ "|" ++ toString y ++ ")"
+  show (Concat x y) = toString x ++ toString y
+  show (Kleene x  ) = "(" ++ toString x ++ ")*"
   
 
 -- | 'match' returns True if the alphabet string input is in the language
