@@ -4,26 +4,30 @@ import Data.Maybe
 
 {- Automata class -}
 class (Monad m) => Automata a m | a -> m, m -> a where
-  -- | 'inital' returns the initial(s) state(s).
+  -- | 'initial' returns the initial(s) state(s).
   initial :: a -> m State
   -- | 'isFinal' returns the final predicate.
   isFinal :: a -> (State -> Bool)
   -- | 'delta' returns the delta function.
   delta   :: a -> (State -> Alpha -> m State)
-  -- | 'accept' checks if a word is accepted by an automaton.
+  -- | 'accept' checks if a word is accepted.
   accept  :: a -> [Alpha] -> Bool
+  -- | 'toNFA' converts an automaton to a NFA.
+  toNFA   :: a -> NFA
 
 instance Automata DFA Maybe where
   initial (DFA i _ _) = i
   isFinal (DFA _ f _) = f
   delta   (DFA _ _ t) = t
   accept  dfa         = maybe False (isFinal nfa) . process dfa
+  toNFA   (DFA i f t) = NFA (maybeToList i) f (\s c -> maybeToList $ t s c)
 
 instance Automata NFA [] where
   initial (NFA i _ _)  = i
   isFinal (NFA _ f _)  = f
   delta   (NFA _ _ t)  = t
   accept  nfa          = any (isFinal nfa) . process nfa
+  toNFA                = id
 
 
 {- Basic types for automata -}
@@ -49,32 +53,39 @@ data NFA = NFA [State] (State -> Bool) (State -> Alpha -> [State])
 
 {- Auxiliary functions -}
 
--- | 'addLog' creates a list of old states. Used in logging functions.
+-- | 'addLog' creates a list of old states. Useful in logging functions.
 addLog :: State -> State -> (State, [State])
 addLog old new = (new, [old])
 
--- | 'addFinal' adds final state to a list. Useful when extracting
---   data from WriterT in an execution.
+-- | 'addFinal' adds final state to the list.
 addFinal :: (State, [State]) -> [State]
 addFinal (s,ss) = ss ++ [s]
+
+-- | 'foldI' is equivalent to 'foldM' with its initial value inside a monad.
+foldI :: (Monad m) => (a -> b -> m a) -> m a -> [b] -> m a
+foldI f i xs = i >>= \x -> foldM f x xs
+
+-- | 'initialW' returns initial state(s) inside minimum WriterT context.
+initialW :: Automata a m => a -> WriterT [State] m State
+initialW fa = WriterT $ liftM (\x -> (x,[])) (initial fa)
+
+
+{- Logging and processing functions -}
 
 -- | 'process' returns the final state of a finite automaton given a word.
 --   Returns a default value if execution wasn't correct.
 process :: (Automata a m) => a -> [Alpha] -> m State
-process fa ss  = (initial fa) >>= (\x -> foldM (delta fa) x ss)
+process fa = foldI (delta fa) (initial fa)
 
--- | 'logt' takes a delta function and returns it inside the
---   WriterT transformer. This allows keeping a log of the states.
+-- | 'logt' takes an automaton and returns its  delta function inside the
+--   WriterT transformer. This allows keeping a log of states.
 logt :: (Automata a m) => a -> (State -> Alpha -> WriterT [State] m State)
-logt fa old symbol = WriterT $ delta fa old symbol >>= return . addLog old
-
--- | 'initalW' returns the initial state(s) inside minimum WriterT context.
-initialW :: Automata a m => a -> WriterT [a1] m State
-initialW fa = WriterT $ (initial fa) >>= return . (\x -> (x,[]))
+logt fa old symbol = WriterT $ liftM (addLog old) (delta fa old symbol)
 
 -- | 'execute' returns the execution(s) log(s) given a word.
 execute :: (Automata a m) => a -> [Alpha] -> m [State]
-execute fa ss  = (runWriterT $ initialW fa >>= (\x -> foldM (logt fa) x ss)) >>= return . addFinal
+execute fa = liftM addFinal . runWriterT . foldI (logt fa) (initialW fa)
+
 
 {- Example -}
 
