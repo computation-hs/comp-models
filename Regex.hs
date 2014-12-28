@@ -16,7 +16,7 @@ data Regex = Literal Alpha
 
 instance Show Regex where
   show (Literal x ) = show x
-  show (Epsilon   ) = "%"
+  show (Epsilon   ) = "ε"
   show (Altern x y) = "(" ++ show x ++ "|" ++ show y ++ ")"
   show (Concat x y) = show x ++ show y
   show (Kleene x  ) = "(" ++ show x ++ ")*"

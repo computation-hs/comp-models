@@ -35,7 +35,7 @@ literalp = Literal <$> lower
 
 -- | 'epsilonp' parses epsilons. The symbol '%' is used for epsilon.
 epsilonp :: Parser Regex
-epsilonp = char '%' >> return (Epsilon)
+epsilonp = char '&' >> return (Epsilon)
 
 -- | 'alternp' parses the Or operation. Consumes a '+' symbol.
 alternp :: Parser (Regex -> Regex -> Regex)
