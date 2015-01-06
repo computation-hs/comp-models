@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 import Control.Monad.Writer
 import Data.Maybe
+import Data.List
 
 {- Automata class -}
 class (Monad m) => Automata a m | a -> m, m -> a where
@@ -82,6 +83,20 @@ foldI f i xs = i >>= \x -> foldM f x xs
 -- | 'initialW' returns initial state(s) inside minimum WriterT context.
 initialW :: Automata a m => a -> WriterT [State] m State
 initialW fa = WriterT $ liftM (addLog []) (initial fa)
+
+-- | 'epsilon' is an auxiliary function used to calculate the epsilon closure.
+epsilon :: NFA -> State -> [State]
+epsilon fa s = delta fa s 'ɛ'
+
+-- | 'step' is an auxiliary function used to calculate the epsilon closure.
+step :: NFA -> ([State], [State]) -> ([State], [State])
+step fa (old,acc) =
+  let new = filter (flip notElem acc) (concatMap (epsilon fa) old)
+  in (new, acc ++ new)
+
+-- | 'closure' calculates a state epsilon closure.
+closure :: NFA -> State -> [State]
+closure fa s = nub $ snd $ until (null . fst) (step fa) ([s],[s])
 
 
 {- Logging and processing functions -}
