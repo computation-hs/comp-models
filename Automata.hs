@@ -1,9 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+module Automata where
+
 import Control.Monad.Writer
 import Data.Maybe
 import Data.List
-
-module Automata where
 
 {- Automata class -}
 class (Monad m) => Automata a m | a -> m, m -> a where
