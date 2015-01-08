@@ -5,7 +5,7 @@ import ToString
 import Data.Maybe
 import Data.List
 
-header = "digraph {"
+header = "digraph {\n"
 end    = "}"
 
 -- Convergence
@@ -26,38 +26,15 @@ newStates dfa s = s : catMaybes [(deltaDFA dfa) s a | a <- (alphaDFA dfa)]
 
 
 -- Writes graph
-toDot :: DFA -> [String]
-toDot dfa = catMaybes [fmap (format s a) (delta s a) | a <- alpha, s <- states]
+productions :: DFA -> [String]
+productions dfa = catMaybes [fmap (format s a) (delta s a) | a <- alpha, s <- states]
       where alpha  = alphaDFA dfa
             states = listStates dfa
             delta  = deltaDFA dfa
-            format s a = ((toString s ++ "," ++ toString a ++ ",") ++) . toString
+            format s a t = "\t" ++ toString s ++ " -> " ++ toString t 
+                                ++ " label[\"" ++ toString a ++ "\"]"
 
-{-
-toGraph :: DFA -> String
-toGraph dfa = stateToGraph s
-
-
-
-stateToGraph :: DFA -> State -> String
-stateToGraph dfa s = concat $ map alphaToGraph (newStates dfa s)
-
-alphaToGraph :: DFA -> State -> Alpha -> String
-alphaToGraph dfa s a = fromMaybe "" (fmap (transitionToGraph s a) $ (delta dfa) s a)
-
-transitionToGraph :: State -> Alpha -> State -> String
-transitionToGraph s a t = 
-    (toString s) ++ " -> " ++ (toString t) ++
-    "[label=" ++ (toString a) ++ "]"
-
-
-
--- Convergence
-converge :: [a] -> a
-converge (x:ys@(y:_))
-    | x == y    = y
-    | otherwise = converge ys 
-
-stabilize :: (a -> a) -> (a -> a)
-stabilize = converge . iterate 
--}
+toDot :: DFA -> String
+toDot dfa = header ++
+            unlines (productions dfa) ++
+            end
