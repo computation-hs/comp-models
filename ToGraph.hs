@@ -2,20 +2,12 @@ module ToGraph where
 
 import Automata
 import ToString
+import Convergence
 import Data.Maybe
 import Data.List
 
 header = "digraph {\n"
 end    = "}"
-
--- Convergence
-converge :: (Eq a) => [a] -> a
-converge (x:ys@(y:_))
-    | x == y    = y
-    | otherwise = converge ys 
-
-stabilize :: (Eq a) => (a -> a) -> (a -> a)
-stabilize f x = converge $ iterate f x
 
 -- Lists states
 listStates :: DFA -> [State]
