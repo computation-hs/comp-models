@@ -15,6 +15,11 @@ listStates dfa = stabilize (nub . concat . (map (newStates dfa))) [fromJust (ini
 newStates :: DFA -> State -> [State]
 newStates dfa s = s : catMaybes [(deltaDFA dfa) s a | a <- (alphaDFA dfa)]
 
+listStatesNfa :: NFA -> [State]
+listStatesNfa nfa = stabilize (nub . concat . (map (newStatesNfa nfa))) (initialNFA nfa)
+
+newStatesNfa :: NFA -> State -> [State]
+newStatesNfa nfa s = s : concat [(deltaNFA nfa) s a | a <- (alphaNFA nfa)]
 
 {- ToDot class -}
 -- | 'ToDot' class represents the types that are representable in .dot format.               
@@ -37,6 +42,9 @@ class ToDot a where
 instance ToDot DFA where
     edges = edgesDfa
 
+instance ToDot NFA where
+    edges = edgesNfa
+
 -- | 'edgesDfa' creates a list of edges of the automata, an edge will represent a 
 --   transition and will be labeled with the alphabet input that generates the 
 --   transition.
@@ -51,3 +59,8 @@ edgesDfa dfa = catMaybes [fmap (format s a) (delta s a) | a <- alpha, s <- state
 -- | 'edgesNfa' creates a list of edges of the automata.
 edgesNfa :: NFA -> [String]
 edgesNfa nfa = concat [fmap (format s a) (delta s a) | a <- alpha, s <- states]
+    where alpha  = alphaNFA nfa
+          states = listStatesNfa nfa
+          delta  = deltaNFA nfa
+          format s a t = "\t" ++ toString s ++ " -> " ++ toString t 
+                              ++ " label[\"" ++ toString a ++ "\"]"
