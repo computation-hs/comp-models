@@ -47,3 +47,7 @@ edgesDfa dfa = catMaybes [fmap (format s a) (delta s a) | a <- alpha, s <- state
             delta  = deltaDFA dfa
             format s a t = "\t" ++ toString s ++ " -> " ++ toString t 
                                 ++ " label[\"" ++ toString a ++ "\"]"
+
+-- | 'edgesNfa' creates a list of edges of the automata.
+edgesNfa :: NFA -> [String]
+edgesNfa nfa = concat [fmap (format s a) (delta s a) | a <- alpha, s <- states]
