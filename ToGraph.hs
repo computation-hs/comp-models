@@ -27,13 +27,11 @@ newStates dfa s = s : catMaybes [(deltaDFA dfa) s a | a <- (alphaDFA dfa)]
 
 -- Writes graph
 toDot :: DFA -> [String]
-toDot dfa = [case delta s a of
-               Nothing -> ""
-               Just t  -> toString s ++ "," ++ toString a ++ "," ++ toString t
-             | a <- alpha, s <- states]
+toDot dfa = catMaybes [fmap (format s a) (delta s a) | a <- alpha, s <- states]
       where alpha  = alphaDFA dfa
             states = listStates dfa
             delta  = deltaDFA dfa
+            format s a = ((toString s ++ "," ++ toString a ++ ",") ++) . toString
 
 {-
 toGraph :: DFA -> String
