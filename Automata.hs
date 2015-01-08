@@ -1,5 +1,16 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-module Automata where
+
+module Automata (
+  Automata(..)
+  ,State
+  ,String
+  ,DFA
+  ,NFA
+  ,process
+  ,execute
+  ,dfa
+  ,nfa
+) where
 
 import Control.Monad.Writer
 import Data.Maybe
