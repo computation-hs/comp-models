@@ -8,12 +8,15 @@ import Data.List
 
 
 
--- Lists states
+-- Auxiliary function. Lists states
 listStates :: DFA -> [State]
 listStates dfa = stabilize (nub . concat . (map (newStates dfa))) [fromJust (initialDFA dfa)]
 
 newStates :: DFA -> State -> [State]
 newStates dfa s = s : catMaybes [(deltaDFA dfa) s a | a <- (alphaDFA dfa)]
+
+listStatesNfa :: NFA -> [State]
+listStatesNfa nfa = stabilize (nub . concat . (map (newStatesNfa nfa))) (initialNFA nfa)
 
 
 -- Writes graph
@@ -38,3 +41,12 @@ transitionsDot dfa = catMaybes [fmap (format s a) (delta s a) | a <- alpha, s <-
             delta  = deltaDFA dfa
             format s a t = "\t" ++ toString s ++ " -> " ++ toString t
                                 ++ " label[\"" ++ toString a ++ "\"]"
+
+-- | 'edgesNfa' creates a list of edges of the automata.
+edgesNfa :: NFA -> [String]
+edgesNfa nfa = concat [fmap (format s a) (delta s a) | a <- alpha, s <- states]
+    where alpha  = alphaNFA nfa
+          states = listStatesNfa nfa
+          delta  = deltaNFA nfa
+          format s a t = "\t" ++ toString s ++ " -> " ++ toString t 
+                              ++ " label[\"" ++ toString a ++ "\"]"
