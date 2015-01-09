@@ -15,6 +15,7 @@ module Automata (
 import Control.Monad.Writer
 import Data.Maybe
 import Data.List
+import Convergence
 
 {- Automata class -}
 class (Monad m) => Automata a m | a -> m, m -> a where
@@ -30,6 +31,9 @@ class (Monad m) => Automata a m | a -> m, m -> a where
   alpha   :: a -> [Alpha]
   -- | 'toNFA' converts an automaton to a NFA.
   toNFA   :: a -> NFA
+  -- | 'states' returns the set of states.
+  states  :: a -> [State]
+  states = listStates . toNFA
 
 instance Automata DFA Maybe where
   initial             = initialDFA
@@ -110,6 +114,14 @@ step fa (old,acc) =
 -- | 'closure' calculates a state epsilon closure.
 closure :: NFA -> State -> [State]
 closure fa s = nub $ snd $ until (null . fst) (step fa) ([s],[s])
+
+-- | 'listStates' returns the set of states of a NFA.
+listStates :: NFA -> [State]
+listStates nfa = stabilize (nub . concat . (map (newStates nfa))) (initial nfa)
+
+-- | 'newStates' is an auxiliary function used to calculate the set of states.
+newStates :: NFA -> State -> [State]
+newStates nfa s = s : concat [(delta nfa) s a | a <- (alpha nfa)]
 
 
 {- Logging and processing functions -}

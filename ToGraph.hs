@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
-
 module ToGraph(toDot) where
 
 
