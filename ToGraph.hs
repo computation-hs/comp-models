@@ -1,4 +1,7 @@
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
+
 module ToGraph(toDot) where
+
 
 import Automata
 import ToString
@@ -6,40 +9,41 @@ import Convergence
 import Data.Maybe
 import Data.List
 
+-- | 'IsGraph' is the class of the types that can be represented in .dot format.
+class IsGraph a where
+    -- | 'toDot' transforms to .dot format.
+    toDot :: a -> String
+
+instance (Automata a m) => IsGraph a where
+    toDot = nfaToDot . toNFA
 
 
--- Auxiliary function. Lists states
-listStates :: DFA -> [State]
-listStates dfa = stabilize (nub . concat . (map (newStates dfa))) [fromJust (initialDFA dfa)]
-
-newStates :: DFA -> State -> [State]
-newStates dfa s = s : catMaybes [(deltaDFA dfa) s a | a <- (alphaDFA dfa)]
-
+-- Auxiliary function. Lists states.
 listStatesNfa :: NFA -> [State]
-listStatesNfa nfa = stabilize (nub . concat . (map (newStatesNfa nfa))) (initialNFA nfa)
+listStatesNfa nfa = stabilize (nub . concat . (map (newStatesNfa nfa))) (initial nfa)
 
 newStatesNfa :: NFA -> State -> [State]
-newStatesNfa nfa s = s : concat [(deltaNFA nfa) s a | a <- (alphaNFA nfa)]
+newStatesNfa nfa s = s : concat [(delta nfa) s a | a <- (alpha nfa)]
 
 -- Writes graph
 -- | 'toDot' returns a formatted string, containing the representation of the
 --   automata as a .dot graph.
-toDot :: NFA -> String
-toDot nfa = header ++
-            unlines (edges nfa) ++
-            end
+nfaToDot :: NFA -> String
+nfaToDot nfa = header ++
+               unlines (edges nfa) ++
+               end
     where
       header = "digraph {\n"
       end    = "}"
 
 
--- | 'edgesNfa' creates a list of edges of formatted edges of the representation
+-- | 'edges' creates a list of edges of formatted edges of the representation
 --    graph of the automata. An edge will represent a transition and will be 
 --    labeled with the alphabet input.
-edgesNfa :: NFA -> [String]
-edgesNfa nfa = concat [fmap (format s a) (delta s a) | a <- alpha, s <- states]
-    where alpha  = alphaNFA nfa
+edges :: NFA -> [String]
+edges nfa = concat [fmap (format s a) (delt s a) | a <- alph, s <- states]
+    where alph   = alpha nfa
           states = listStatesNfa nfa
-          delta  = deltaNFA nfa
+          delt   = delta nfa
           format s a t = "\t" ++ toString s ++ " -> " ++ toString t 
                               ++ " label[\"" ++ toString a ++ "\"]"
